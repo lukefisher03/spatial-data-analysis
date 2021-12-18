@@ -14,12 +14,11 @@ import csv
 import tkinter as tk
 from tkinter import filedialog
 import dateutil.parser as dp
+import os
 
 root_tk = tk.Tk()
 root_tk.withdraw()
 
-print("Please select the participant directory:")
-root = filedialog.askdirectory()
 print("Please select your eye tracker folder")
 gazedata_folder = filedialog.askdirectory()
 print("Please select your EDA file")
@@ -29,15 +28,20 @@ output_name = input("Identifier for data: ")
 print("Please select the path to the target folder")
 output_folder = filedialog.askdirectory()
 
+gunzip_path = gazedata_folder + "/gazedata.gz"
+print("Unzipping gazedata.gz")
+os.system("gunzip "+ "'"+gunzip_path +"'")#unzip the gazedata
+print("Successfully unzipped gazedata.gz")
+
 gazedata_path = gazedata_folder + "/" + "gazedata"
 recording_file = gazedata_folder + "/recording.g3"
 
 gaze_objects = []
 eda_lines = []
-
+eyetracker_first = False
 with open(recording_file) as f:
     data = json.load(f)
-with open(root + "/WristBand/EDA.csv", newline="") as f:
+with open(eda_filepath, newline="") as f:
     csv_reader = csv.reader(f)
     wristband_start_time = float(next(csv_reader)[0])
 
@@ -45,39 +49,29 @@ eyetracker_start_time_parsed = dp.parse(data["created"])
 eyetracker_start_time = float(eyetracker_start_time_parsed.timestamp())#convert the eyetracker timestamp from iso 8601 to Unix. 
 start_time_diff = abs(eyetracker_start_time - wristband_start_time) #this gives us the offset between the two start times of the equipment (wristband/eyetracker).
 
-tracker = 0
 if eyetracker_start_time < wristband_start_time:
+    eyetracker_first = True
     #The eyetracker started first, so we need to use our time diff variable to cut off the unsynced portion of the data on the eyetracker data.
     #also we need to cut out every 25th and 50th element of the dataset.
     with open(gazedata_path) as eyetracker_file: #open the original line by line to append our JSON objects
         for i, jsonObj in enumerate(eyetracker_file):
-            if i >= start_time_diff/0.02 and tracker < 25 :#make sure that the data for the eyetracker and wristband start at the same time.
-                gaze_obj = json.loads(jsonObj)
+            gaze_obj = json.loads(jsonObj)
+            if gaze_obj["timestamp"] >= start_time_diff:#make sure that the data for the eyetracker and wristband start at the same time.
                 gaze_objects.append(gaze_obj)
-            else:
-                print("Reset the tracker!")
-                tracker = 0
             print(str(i) + " elements sorted")
-            tracker+= 1
     with open(eda_filepath, newline="") as eda_file:
         csv_reader = csv.reader(eda_file)
         header = next(csv_reader)
         sample_rate = next(csv_reader)
 
-        for eda in f:
-            eda_lines.append(float(eda))
+        for eda in csv_reader:
+            eda_lines.append(eda)
 else:
-
     with open(gazedata_path) as f: #open the original line by line to append our JSON objects
         for i, jsonObj in enumerate(f):
-            if tracker < 24 :
-                gaze_obj = json.loads(jsonObj)
-                gaze_objects.append(gaze_obj)
-            else:
-                print("Reset the tracker!")
-                tracker = 0
+            gaze_obj = json.loads(jsonObj)
+            gaze_objects.append(gaze_obj)
             print(str(i) + " elements sorted")
-            tracker += 1
     with open(eda_filepath) as f:
         csv_reader = csv.reader(f)
         header = next(csv_reader)
@@ -88,8 +82,8 @@ else:
             if i >= (start_time_diff/0.25) - 3:
                eda_lines.append(eda)
 
-gaze_out = output_folder + "/gazedata_reformatted_" +output_name +".json"
-eda_out = output_folder + "/eda_reformatted" + output_name + ".csv"
+gaze_out = output_folder + "/" +output_name +"_GAZEDATA.json"
+eda_out = output_folder + "/" + output_name + "_EDA.csv"
 
 with open(gaze_out, "w") as outfile: #write out our reformatted JSON.
     json.dump(gaze_objects, outfile, indent=4)
@@ -102,13 +96,6 @@ with open(eda_out, 'w') as file:
 #Sync the data now
 ##########################################
 
-print("Please selected the formatted EDA file: ")
-eda_csv_path = filedialog.askopenfilename()
-print("Please selected the formatted gazedata file: ")
-formatted_gaze_data_path = filedialog.askopenfilename()
-print("Please selected the target folder to write to: ")
-output_folder = filedialog.askdirectory()
-
 output_data = {
     "Left Pupil Diameter": [],
     "Right Pupil Diameter": [],
@@ -117,23 +104,30 @@ output_data = {
     "Timestamp (Minutes)": [],
     "Timestamp List (the timestamps of the diameter values that make up the average values)": []
 }
-with open(formatted_gaze_data_path) as file:
+with open(gaze_out) as file:
     gazedata = json.load(file)
 
 gazedata_length = len(gazedata)
 
 tracker = 0
-with open(eda_csv_path, "r") as csv_file:
+diff = start_time_diff if eyetracker_first else 0
+with open(eda_out, "r") as csv_file:
     csv_reader = csv.reader(csv_file)
     header = next(csv_reader)
     sample_rate = next(csv_reader)
 
     for i,row in enumerate(csv_reader): #since the EDA readings happen more frequently, base each new data entry on individual EDA readings.
-        output_data["EDA"].append(float(row[0]))
+        try:
+            output_data["EDA"].append(float(row[0]))
+        except:
+            output_data["EDA"].append(row[0])
+
         left_pupil_values,right_pupil_values = [],[]
         timestamps = []
+
         try:
-            while gazedata[tracker]["timestamp"] < (i * 0.25) + 0.25: 
+
+            while gazedata[tracker]["timestamp"] - diff < (i*0.25) + 0.25: 
                 try:
                     left_pupil_values.append(gazedata[tracker]["data"]["eyeleft"]["pupildiameter"])
                 except:
@@ -147,8 +141,7 @@ with open(eda_csv_path, "r") as csv_file:
                     timestamps.append(gazedata[tracker]["timestamp"])
                 except:
                     timestamps.append("No Data")
-                tracker += 1
-
+                tracker+=1
         except:
             print("No more timestamps")
 
@@ -170,4 +163,5 @@ with open(eda_csv_path, "r") as csv_file:
         output_data["Timestamp (Minutes)"].append(round(i*0.25/60,2))
 
 output_df = pd.DataFrame(output_data)
-output_csv = output_df.to_excel(output_folder + "/synced-data-1.xlsx", sheet_name="Wristband and Eyetracker Data",index=False)
+output_csv = output_df.to_excel(output_folder + "/synced-data-"+ output_name+".xlsx", sheet_name="Wristband and Eyetracker Data",index=False)
+print(start_time_diff)
