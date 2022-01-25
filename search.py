@@ -1,3 +1,4 @@
+from time import time
 import tkinter as tk
 from tkinter import filedialog
 import pandas as pd
@@ -14,10 +15,14 @@ file_to_search = filedialog.askopenfilename()
 excel_df = pd.read_excel(file_to_search)
 def find_avearages():
     time_range = []
-    #time_range = [start, stop]
-    time_range.append(int(input("In the range of times to search, what would you like the start time to be(seconds): ")) * 4)
-    time_range.append(int(input("In the range of times to search, what would you like the end time to be(seconds): ")) * 4)
+    start = input("In the range of times to search, what would you like the start time to be(minutes:seconds) - ")
+    stop = input("In the range of times to search, what would you like the end time to be(minutes:seconds) - ")
 
+    start_values = start.split(":")
+    time_range.append((int((start_values[0])) * 60) + int(start_values[1]))
+    stop_values = stop.split(":")
+    time_range.append((int((stop_values[0])) * 60)+ int(stop_values[1]))
+    
     left_diameters, right_diameters, edas = [],[],[]
     for i in range(time_range[0], time_range[1]+1):
         line = excel_df.loc[i]
