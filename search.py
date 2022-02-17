@@ -24,7 +24,7 @@ def find_avearages():
     time_range.append((int((stop_values[0])) * 60)+ int(stop_values[1]))
     
     left_diameters, right_diameters, edas = [],[],[]
-    for i in range(time_range[0], time_range[1]+1):
+    for i in range((time_range[0]*4), (time_range[1]*4)+1):
         line = excel_df.loc[i]
         print("Searching for values at time: " + str(line["Timestamp (Seconds)"]) + " seconds")
         if type(line["Left Pupil Diameter"]) == float:
@@ -33,20 +33,21 @@ def find_avearages():
             right_diameters.append(line["Right Pupil Diameter"])
         if type(line["EDA"]) in [float, numpy.float64]:
             edas.append(line["EDA"])
-    print("Searched " + str((time_range[1] - time_range[0])) + " rows")
+    print("Searched " + str(((time_range[1]*4) - (time_range[0])*4)+1) + " rows")
+    print("Time range: {0} - {1}".format(start, stop))
+    print("Time range in seconds: {}".format(time_range))
     try:
-        print("The average left pupil diameter is: " + str(sum(left_diameters)/len(left_diameters)))
+        print("The average left pupil diameter is: {:.3f}".format(sum(left_diameters)/len(left_diameters)))
     except:
         print("There were no real numbers in this time range to calculate the average left pupil diameter")
     try:
-        print("The average right pupil diameter is: " + str(sum(right_diameters)/len(right_diameters)))
+        print("The average right pupil diameter is: {:.3f}".format(sum(right_diameters)/len(right_diameters)))
     except:
         print("There were no real numbers in this time range to calculate the average right pupil diameter")
     try:
-        print("The average EDA is: " + str(sum(edas)/len(edas)))
+        print("The average EDA is: {:.3f}".format(sum(edas)/len(edas)))
     except:
         print("There were no real numbers in this time range to calculate the average EDA")
-
 while repeat:
     find_avearages()
 

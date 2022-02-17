@@ -8,6 +8,7 @@
 #7. And this is all written out to an xlsx file for data analysis afterwards.
 ################################
 
+import math
 import pandas as pd
 import json
 import csv
@@ -21,6 +22,7 @@ root_tk.withdraw()
 
 print("Please select your eye tracker folder")
 gazedata_folder = filedialog.askdirectory()
+print(gazedata_folder)
 print("Please select your EDA file")
 eda_filepath = filedialog.askopenfilename()
 print("Please type the label for the output files")
@@ -165,3 +167,9 @@ with open(eda_out, "r") as csv_file:
 output_df = pd.DataFrame(output_data)
 output_csv = output_df.to_excel(output_folder + "/synced-data-"+ output_name+".xlsx", sheet_name="Wristband and Eyetracker Data",index=False)
 print(start_time_diff)
+print(gazedata_folder)
+match(eyetracker_first):
+    case True:
+        print("The eyetracker was started first")
+    case False:
+        print("The EDA was started first")
