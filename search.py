@@ -1,4 +1,3 @@
-from time import time
 import tkinter as tk
 from tkinter import filedialog
 import pandas as pd

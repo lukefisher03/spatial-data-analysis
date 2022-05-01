@@ -171,5 +171,9 @@ print(gazedata_folder)
 match(eyetracker_first):
     case True:
         print("The eyetracker was started first")
+        print(" ET Time: " + str(eyetracker_start_time))
+        print("EDA Time: " +str(wristband_start_time))
     case False:
         print("The EDA was started first")
+        print(" ET Time: " + str(eyetracker_start_time))
+        print("EDA Time: " + str(wristband_start_time))
